@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+package-lock.json
+
+# Environment files
+.env
+.env.local
+.env.production
+
+# Build outputs
+dist/
+build/
+*.log
+
+# PDFs and uploads
+public/pdfs/*.pdf
+public/uploads/*
+!public/pdfs/.gitkeep
+!public/uploads/.gitkeep
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
