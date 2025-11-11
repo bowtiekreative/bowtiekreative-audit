@@ -43,6 +43,9 @@ CREATE TABLE IF NOT EXISTS audits (
   report_generated BOOLEAN DEFAULT FALSE,
   pdf_path VARCHAR(500),
   
+  -- Update Code for allowing users to edit their reports
+  update_code VARCHAR(4) UNIQUE NOT NULL,
+  
   -- Timestamps
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,

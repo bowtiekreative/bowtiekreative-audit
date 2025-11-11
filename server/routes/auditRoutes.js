@@ -5,7 +5,9 @@ import {
   getAudit,
   getAuditsByEmail,
   getAllAudits,
-  getStats
+  getStats,
+  verifyUpdateCode,
+  updateAudit
 } from '../controllers/auditController.js';
 import { authenticateToken } from '../middleware/auth.js';
 
@@ -16,6 +18,10 @@ router.post('/', createAudit);
 router.get('/:auditId', getAudit);
 router.get('/email/:email', getAuditsByEmail);
 router.post('/:auditId/report', generateReport);
+
+// Update code routes (public)
+router.post('/verify-code', verifyUpdateCode);
+router.put('/update', updateAudit);
 
 // Admin routes
 router.get('/admin/all', authenticateToken, getAllAudits);
