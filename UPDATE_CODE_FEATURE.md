@@ -69,6 +69,15 @@ POST /api/audits/verify-code
 }
 ```
 
+**Error Response (429 - Rate Limit):**
+```json
+{
+  "success": false,
+  "message": "Too many verification attempts from this IP. Please try again in 15 minutes.",
+  "retryAfter": 900
+}
+```
+
 ### Update Audit
 ```
 PUT /api/audits/update
@@ -102,6 +111,15 @@ PUT /api/audits/update
 {
   "success": false,
   "message": "Invalid update code or email"
+}
+```
+
+**Error Response (429 - Rate Limit):**
+```json
+{
+  "success": false,
+  "message": "Too many update attempts from this IP. Please try again in 1 hour.",
+  "retryAfter": 3600
 }
 ```
 
@@ -161,21 +179,25 @@ The migration script will:
 - Email must match exactly (case-sensitive)
 - Failed verification returns generic error message (no information leakage)
 
-### Rate Limiting (Recommended)
-Consider implementing rate limiting on the verification endpoint to prevent brute force attacks:
+### Rate Limiting (Implemented)
+Rate limiting has been implemented on critical endpoints to prevent abuse:
 
-```javascript
-// Example using express-rate-limit
-import rateLimit from 'express-rate-limit';
+**Verify Code Endpoint** (`POST /api/audits/verify-code`):
+- **Limit**: 5 attempts per 15 minutes per IP
+- **Purpose**: Prevent brute force attacks on update codes
+- **Response**: 429 Too Many Requests with retry time
 
-const verifyCodeLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts per window
-  message: 'Too many verification attempts, please try again later'
-});
+**Update Audit Endpoint** (`PUT /api/audits/update`):
+- **Limit**: 3 updates per hour per IP
+- **Purpose**: Prevent abuse of update functionality
+- **Response**: 429 Too Many Requests with retry time
 
-router.post('/verify-code', verifyCodeLimiter, verifyUpdateCode);
-```
+**Create Audit Endpoint** (`POST /api/audits`):
+- **Limit**: 3 audits per hour per IP
+- **Purpose**: Prevent spam audit submissions
+- **Response**: 429 Too Many Requests with retry time
+
+Rate limiting is automatically applied via middleware in `server/middleware/rateLimiter.js`
 
 ## Email Templates
 
