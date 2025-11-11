@@ -1,9 +1,43 @@
 import pool from '../config/database.js';
 
 class Audit {
+  // Generate a unique 4-digit code
+  static generateUpdateCode() {
+    return Math.floor(1000 + Math.random() * 9000).toString();
+  }
+
+  // Check if update code already exists
+  static async isUpdateCodeUnique(code) {
+    const [rows] = await pool.query('SELECT id FROM audits WHERE update_code = ?', [code]);
+    return rows.length === 0;
+  }
+
+  // Generate a unique 4-digit update code
+  static async generateUniqueUpdateCode() {
+    let code;
+    let isUnique = false;
+    let attempts = 0;
+    const maxAttempts = 10;
+
+    while (!isUnique && attempts < maxAttempts) {
+      code = this.generateUpdateCode();
+      isUnique = await this.isUpdateCodeUnique(code);
+      attempts++;
+    }
+
+    if (!isUnique) {
+      throw new Error('Failed to generate unique update code');
+    }
+
+    return code;
+  }
+
   static async create(auditData) {
     const connection = await pool.getConnection();
     try {
+      // Generate unique update code
+      const updateCode = await this.generateUniqueUpdateCode();
+
       const [result] = await connection.query(
         `INSERT INTO audits (
           business_name, contact_name, email, phone, website, 
@@ -11,8 +45,9 @@ class Audit {
           social_media_platforms, current_marketing_tools, target_audience,
           marketing_goals, monthly_budget, biggest_challenges,
           has_website, has_social_media, has_email_marketing, 
-          has_seo, has_paid_ads, has_analytics, has_crm, has_automation
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          has_seo, has_paid_ads, has_analytics, has_crm, has_automation,
+          update_code
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           auditData.business_name,
           auditData.contact_name,
@@ -35,10 +70,11 @@ class Audit {
           auditData.has_paid_ads || false,
           auditData.has_analytics || false,
           auditData.has_crm || false,
-          auditData.has_automation || false
+          auditData.has_automation || false,
+          updateCode
         ]
       );
-      return result.insertId;
+      return { auditId: result.insertId, updateCode };
     } finally {
       connection.release();
     }
@@ -105,6 +141,81 @@ class Audit {
       'UPDATE audits SET report_generated = TRUE, pdf_path = ? WHERE id = ?',
       [pdfPath, id]
     );
+  }
+
+  // Find audit by update code and email
+  static async findByUpdateCode(updateCode, email) {
+    const [rows] = await pool.query(
+      'SELECT * FROM audits WHERE update_code = ? AND email = ?',
+      [updateCode, email]
+    );
+    if (rows.length > 0) {
+      const audit = rows[0];
+      // Parse JSON fields
+      audit.social_media_platforms = JSON.parse(audit.social_media_platforms || '[]');
+      audit.current_marketing_tools = JSON.parse(audit.current_marketing_tools || '[]');
+      return audit;
+    }
+    return null;
+  }
+
+  // Update audit data
+  static async update(id, auditData) {
+    const connection = await pool.getConnection();
+    try {
+      await connection.query(
+        `UPDATE audits SET
+          business_name = ?, 
+          contact_name = ?, 
+          phone = ?, 
+          website = ?,
+          industry = ?, 
+          business_size = ?, 
+          location = ?,
+          social_media_platforms = ?, 
+          current_marketing_tools = ?, 
+          target_audience = ?,
+          marketing_goals = ?, 
+          monthly_budget = ?, 
+          biggest_challenges = ?,
+          has_website = ?, 
+          has_social_media = ?, 
+          has_email_marketing = ?,
+          has_seo = ?, 
+          has_paid_ads = ?, 
+          has_analytics = ?, 
+          has_crm = ?, 
+          has_automation = ?
+        WHERE id = ?`,
+        [
+          auditData.business_name,
+          auditData.contact_name,
+          auditData.phone || null,
+          auditData.website || null,
+          auditData.industry || null,
+          auditData.business_size || null,
+          auditData.location || null,
+          JSON.stringify(auditData.social_media_platforms || []),
+          JSON.stringify(auditData.current_marketing_tools || []),
+          auditData.target_audience || null,
+          auditData.marketing_goals || null,
+          auditData.monthly_budget || null,
+          auditData.biggest_challenges || null,
+          auditData.has_website || false,
+          auditData.has_social_media || false,
+          auditData.has_email_marketing || false,
+          auditData.has_seo || false,
+          auditData.has_paid_ads || false,
+          auditData.has_analytics || false,
+          auditData.has_crm || false,
+          auditData.has_automation || false,
+          id
+        ]
+      );
+      return true;
+    } finally {
+      connection.release();
+    }
   }
 
   static async getStats() {

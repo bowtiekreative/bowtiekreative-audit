@@ -44,7 +44,10 @@ class EmailService {
     }
   }
 
-  static async notifyAuditStarted(auditId, userEmail, businessName) {
+  static async notifyAuditStarted(auditId, userEmail, businessName, updateCode) {
+    const APP_URL = process.env.APP_URL || 'http://localhost:1221';
+    const updateLink = `${APP_URL}/update-audit?code=${updateCode}&email=${encodeURIComponent(userEmail)}`;
+    
     const subject = '🎯 Your Digital Audit Has Started!';
     const html = `
       <!DOCTYPE html>
@@ -56,6 +59,8 @@ class EmailService {
           .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
           .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
           .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .update-code { background: #fff; padding: 20px; border-radius: 10px; text-align: center; margin: 20px 0; border: 2px dashed #667eea; }
+          .code { font-size: 32px; font-weight: bold; color: #667eea; letter-spacing: 8px; }
           .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
         </style>
       </head>
@@ -67,6 +72,14 @@ class EmailService {
           <div class="content">
             <h2>Hello ${businessName}!</h2>
             <p>Thank you for starting your digital marketing audit with Bowtie Kreative. We're excited to help you unlock your business's full potential!</p>
+            
+            <div class="update-code">
+              <h3>🔑 Your Update Code</h3>
+              <div class="code">${updateCode}</div>
+              <p style="margin-top: 15px; font-size: 14px;">Save this code! You can use it to update your audit information at any time.</p>
+              <a href="${updateLink}" class="button" style="background: #10b981;">Update Your Audit</a>
+            </div>
+
             <p><strong>What happens next?</strong></p>
             <ul>
               <li>We're analyzing your digital presence</li>
@@ -99,6 +112,7 @@ class EmailService {
         <p><strong>Business:</strong> ${businessName}</p>
         <p><strong>Email:</strong> ${userEmail}</p>
         <p><strong>Audit ID:</strong> ${auditId}</p>
+        <p><strong>Update Code:</strong> ${updateCode}</p>
         <p><strong>Time:</strong> ${new Date().toLocaleString()}</p>
       `
     });
@@ -107,6 +121,53 @@ class EmailService {
     await pool.query(
       'INSERT INTO notifications (audit_id, notification_type, sent_to, status) VALUES (?, ?, ?, ?)',
       [auditId, 'audit_started', userEmail, 'sent']
+    );
+  }
+
+  static async notifyAuditUpdated(auditId, userEmail, businessName, pdfUrl) {
+    const subject = '✏️ Your Audit Has Been Updated!';
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+          .content { background: #f9f9f9; padding: 30px; border-radius: 0 0 10px 10px; }
+          .button { display: inline-block; padding: 12px 30px; background: #667eea; color: white; text-decoration: none; border-radius: 5px; margin: 20px 0; }
+          .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✏️ Audit Updated!</h1>
+          </div>
+          <div class="content">
+            <h2>Hello ${businessName}!</h2>
+            <p>Your digital marketing audit has been successfully updated with your latest information.</p>
+            <p>We've regenerated your comprehensive report with the updated data:</p>
+            <a href="${pdfUrl}" class="button">Download Updated Report</a>
+            <p>Want to discuss your updated results and create an action plan?</p>
+            <a href="https://bookme.name/digitalstemcell/lite/schedule-a-consultation-appointment-1" class="button" style="background: #10b981;">Book Strategy Call ($250)</a>
+          </div>
+          <div class="footer">
+            <p>© 2024 Bowtie Kreative. All rights reserved.</p>
+            <p>Questions? Contact us at ${ADMIN_EMAIL}</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    // Send to user
+    await this.sendEmail({ to: userEmail, subject, html });
+
+    // Log notification
+    await pool.query(
+      'INSERT INTO notifications (audit_id, notification_type, sent_to, status) VALUES (?, ?, ?, ?)',
+      [auditId, 'report_generated', userEmail, 'sent']
     );
   }
 

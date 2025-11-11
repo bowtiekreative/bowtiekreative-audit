@@ -5,17 +5,28 @@ import {
   getAudit,
   getAuditsByEmail,
   getAllAudits,
-  getStats
+  getStats,
+  verifyUpdateCode,
+  updateAudit
 } from '../controllers/auditController.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { 
+  verifyCodeLimiter, 
+  updateAuditLimiter, 
+  createAuditLimiter 
+} from '../middleware/rateLimiter.js';
 
 const router = express.Router();
 
 // Public routes
-router.post('/', createAudit);
+router.post('/', createAuditLimiter, createAudit);
 router.get('/:auditId', getAudit);
 router.get('/email/:email', getAuditsByEmail);
 router.post('/:auditId/report', generateReport);
+
+// Update code routes (public) - with rate limiting
+router.post('/verify-code', verifyCodeLimiter, verifyUpdateCode);
+router.put('/update', updateAuditLimiter, updateAudit);
 
 // Admin routes
 router.get('/admin/all', authenticateToken, getAllAudits);
